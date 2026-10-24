@@ -9,7 +9,7 @@
 <body>
   <header class="topbar no-print">
     <h1>Generador de desprendible de nómina</h1>
-    <p>Llena los datos, marca los días en el calendario y descarga el comprobante.</p>
+    <p>Llena los datos, marca los días en el calendario y descarga el comprobante como imagen.</p>
   </header>
 
   <main class="layout">
@@ -79,7 +79,8 @@
       <h2>5. Observaciones (opcional)</h2>
       <textarea id="observaciones" rows="3" placeholder="Se agrega debajo del texto automático"></textarea>
 
-      <button type="button" id="imprimir" class="btn">Imprimir / Guardar PDF</button>
+      <button type="button" id="descargar" class="btn">Descargar imagen (PNG)</button>
+      <p class="ayuda estado" id="estado" aria-live="polite"></p>
     </section>
 
     <!-- ===== DESPRENDIBLE ===== -->
@@ -156,6 +157,7 @@
     </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

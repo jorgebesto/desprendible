@@ -198,6 +198,107 @@ function agregarFila(dl, etiqueta, valor, clase) {
   dl.append(dt, dd);
 }
 
+// ===== Descargar el desprendible como imagen =====
+const ANCHO_IMAGEN = 860;  // ancho fijo del desprendible en la imagen (px)
+const ESCALA = 2;          // 2 = imagen en alta resolución
+
+function nombreArchivo() {
+  const nombre = $('nombre').value.trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'empleado';
+  const fecha = $('fechaPago').value || claveHoy;
+  return `desprendible-${nombre}-${fecha}.png`;
+}
+
+function bajarCanvas(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) { reject(new Error('No se pudo crear la imagen')); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      resolve();
+    }, 'image/png');
+  });
+}
+
+// Forma 1: con la librería html2canvas (se carga desde cdnjs)
+async function capturaHtml2canvas(el) {
+  return html2canvas(el, {
+    scale: ESCALA,
+    backgroundColor: '#ffffff',
+    windowWidth: 1200,
+    onclone: (doc) => doc.getElementById('desprendible').classList.add('captura'),
+  });
+}
+
+// Forma 2 (respaldo): sin librerías, dibujando el desprendible dentro de un SVG
+async function capturaNativa(el) {
+  const css = [...document.styleSheets].map((s) => {
+    try { return [...s.cssRules].map((r) => r.cssText).join('\n'); } catch (e) { return ''; }
+  }).join('\n');
+
+  const clon = el.cloneNode(true);
+  clon.classList.add('captura');
+
+  // Medir el alto real con el ancho fijo
+  const medida = document.createElement('div');
+  medida.style.cssText = `position:absolute;left:-10000px;top:0;width:${ANCHO_IMAGEN}px;`;
+  medida.appendChild(clon);
+  document.body.appendChild(medida);
+  const alto = Math.ceil(clon.getBoundingClientRect().height);
+  document.body.removeChild(medida);
+
+  const html = new XMLSerializer().serializeToString(clon);
+  const estilos = css.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ANCHO_IMAGEN}" height="${alto}">` +
+    `<foreignObject width="100%" height="100%">` +
+    `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:'Segoe UI',Roboto,Arial,sans-serif;color:#1b2b40;">` +
+    `<style>${estilos}</style>${html}</div></foreignObject></svg>`;
+
+  const img = new Image();
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = () => reject(new Error('No se pudo dibujar el desprendible'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = ANCHO_IMAGEN * ESCALA;
+  canvas.height = alto * ESCALA;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(ESCALA, ESCALA);
+  ctx.drawImage(img, 0, 0);
+  return canvas;
+}
+
+async function descargarImagen() {
+  const boton = $('descargar');
+  const el = $('desprendible');
+  boton.disabled = true;
+  $('estado').textContent = 'Generando imagen...';
+  try {
+    let canvas;
+    if (window.html2canvas) {
+      try { canvas = await capturaHtml2canvas(el); } catch (e) { canvas = null; }
+    }
+    if (!canvas) canvas = await capturaNativa(el);
+    await bajarCanvas(canvas);
+    $('estado').textContent = 'Imagen descargada.';
+  } catch (e) {
+    $('estado').textContent = 'No se pudo generar la imagen: ' + e.message;
+  } finally {
+    boton.disabled = false;
+  }
+}
+
 // ===== Eventos =====
 $('mesAnt').addEventListener('click', () => {
   verMes--;
@@ -214,7 +315,7 @@ $('limpiarDias').addEventListener('click', () => {
   pintarCalendario();
   actualizar();
 });
-$('imprimir').addEventListener('click', () => window.print());
+$('descargar').addEventListener('click', descargarImagen);
 
 document.querySelectorAll('#formulario input, #formulario textarea').forEach((el) => {
   el.addEventListener('input', actualizar);
