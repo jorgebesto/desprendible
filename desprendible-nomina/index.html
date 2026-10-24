@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desprendible de Nómina</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar no-print">
+    <h1>Generador de desprendible de nómina</h1>
+    <p>Llena los datos, marca los días en el calendario y descarga el comprobante.</p>
+  </header>
+
+  <main class="layout">
+    <!-- ===== FORMULARIO ===== -->
+    <section class="panel no-print" id="formulario">
+      <h2>1. Datos del empleado</h2>
+      <label>Nombre
+        <input id="nombre" type="text" placeholder="Nombre completo">
+      </label>
+      <label>Cédula
+        <input id="cedula" type="text" placeholder="Opcional">
+      </label>
+      <label>Cargo
+        <input id="cargo" type="text" placeholder="Ej. Auxiliar">
+      </label>
+      <label>Fecha de pago
+        <input id="fechaPago" type="date">
+      </label>
+
+      <h2>2. Días laborados</h2>
+      <p class="ayuda">Toca los días para marcarlos o desmarcarlos. Puedes cambiar de mes con las flechas.</p>
+      <div class="cal">
+        <div class="cal-head">
+          <button type="button" id="mesAnt" aria-label="Mes anterior">&lsaquo;</button>
+          <span id="mesTitulo"></span>
+          <button type="button" id="mesSig" aria-label="Mes siguiente">&rsaquo;</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-acciones">
+          <span id="contadorDias">0 días marcados</span>
+          <button type="button" id="limpiarDias" class="btn-sec">Limpiar</button>
+        </div>
+      </div>
+
+      <h2>3. Valor del día</h2>
+      <div class="opciones">
+        <label class="radio"><input type="radio" name="modo" value="directo" checked> Escribir el valor del día</label>
+        <label class="radio"><input type="radio" name="modo" value="calcular"> Calcular: salario ÷ días pactados</label>
+      </div>
+      <div id="bloqueDirecto">
+        <label>Valor del día ($)
+          <input id="valorDia" type="number" min="0" step="any" placeholder="Ej. 67857.14">
+        </label>
+      </div>
+      <div id="bloqueCalcular" hidden>
+        <div class="fila">
+          <label>Salario pactado ($)
+            <input id="salario" type="number" min="0" step="any" placeholder="Ej. 950000">
+          </label>
+          <label>Días pactados
+            <input id="diasPactados" type="number" min="1" step="1" placeholder="Ej. 14">
+          </label>
+        </div>
+        <p class="resultado" id="valorDiaCalc">Valor del día: $ 0,00</p>
+      </div>
+
+      <h2>4. Horas extras</h2>
+      <div class="fila">
+        <label>Cantidad de horas
+          <input id="horasExtra" type="number" min="0" step="any" value="0">
+        </label>
+        <label>Valor de cada hora ($)
+          <input id="valorHoraExtra" type="number" min="0" step="any" value="0">
+        </label>
+      </div>
+
+      <h2>5. Observaciones (opcional)</h2>
+      <textarea id="observaciones" rows="3" placeholder="Se agrega debajo del texto automático"></textarea>
+
+      <button type="button" id="imprimir" class="btn">Imprimir / Guardar PDF</button>
+    </section>
+
+    <!-- ===== DESPRENDIBLE ===== -->
+    <section class="vista">
+      <article class="desprendible" id="desprendible">
+        <div class="d-header">
+          <div class="d-titulo">
+            <svg class="d-icono" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="19" r="13"/>
+              <path d="M5 60c0-15 12-25 27-25s27 10 27 25z"/>
+            </svg>
+            <div>
+              <h2>DESPRENDIBLE DE NÓMINA</h2>
+              <p>Comprobante de pago de salarios</p>
+            </div>
+          </div>
+          <dl class="d-resumen">
+            <dt>Fecha de pago:</dt><dd id="vFecha">—</dd>
+            <dt>Periodo liquidado:</dt><dd id="vPeriodo">—</dd>
+            <dt>Días laborados:</dt><dd id="vDias">0 días</dd>
+            <dt>Horas extras:</dt><dd id="vHoras">0 horas</dd>
+          </dl>
+        </div>
+
+        <div class="d-caja">
+          <div class="d-caja-tit">Datos del empleado</div>
+          <dl class="d-datos">
+            <dt>Nombre:</dt><dd id="vNombre">—</dd>
+            <dt>Cédula:</dt><dd id="vCedula">—</dd>
+            <dt>Cargo:</dt><dd id="vCargo">—</dd>
+            <dt id="vBaseEtq">Valor día:</dt><dd id="vBase">$ 0,00</dd>
+          </dl>
+        </div>
+
+        <table class="d-tabla">
+          <thead>
+            <tr><th>Devengados</th><th>Valor</th></tr>
+          </thead>
+          <tbody>
+            <tr><td id="vSalEtq">Salario por 0 días</td><td id="vSal">$ 0,00</td></tr>
+            <tr><td id="vHxEtq">Horas extras (0)</td><td id="vHx">$ 0,00</td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td>Total devengado</td><td id="vTotal">$ 0,00</td></tr>
+          </tfoot>
+        </table>
+
+        <div class="d-neto">
+          <span>Neto a pagar</span>
+          <strong id="vNeto">$ 0,00</strong>
+        </div>
+
+        <div class="d-abajo">
+          <div class="d-caja">
+            <div class="d-caja-tit">Cálculos</div>
+            <dl class="d-calc" id="vCalculos"></dl>
+          </div>
+          <div class="d-caja">
+            <div class="d-caja-tit">Calendario de días laborados</div>
+            <div class="d-cals" id="vCalendario"></div>
+          </div>
+        </div>
+
+        <div class="d-caja">
+          <div class="d-caja-tit">Observaciones</div>
+          <div class="d-obs" id="vObs"></div>
+        </div>
+
+        <div class="d-firma">
+          <p>Atentamente,</p>
+          <strong>Área de Nómina</strong>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
